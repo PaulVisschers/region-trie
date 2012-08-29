@@ -48,30 +48,22 @@ insert bs x (Node nodeBs mm (Just a)) = case getIndex bs nodeBs of
   Nothing -> Node nodeBs (MM.insert bs x mm) (Just a)
   Just n -> Node nodeBs mm (Just (modifyArray n (insert bs x) a))
 
---fracture (Node nodeBs mm Nothing) = 
-  
-  --arraySize = length nodeBs ^ 2
-blaat :: (Fractional b) => Bounds b -> [Bounds b]
-blaat [] = []
-blaat [(l, r)] = [[(l, m)], [(m, r)]] where
-  m = (l + r) / 2
-blaat ((l, r) : xs) = map ((l, m) :) xs' ++ map ((m, r) :) xs' where
-  m = (l + r) / 2
-  xs' = blaat xs
+fracture (Node nodeBs mm Nothing) = Node nodeBs MM.empty (newPartitions nodeBs) -- TODO: reinsert the items in mm into the new node.
+fracture (Node nodeBs mm (Just a)) = Node nodeBs mm (Just a)
 
-bounds = possibilities . map bounds' where
-  bounds' (l, r) = [(l, m), (m, r)] where
+newPartitions :: Fractional b => Bounds b -> A.Array Int (PartitionTree b a)
+newPartitions bs = A.listArray (0, length bs ^ 2 - 1) . map empty . possibilities . map bounds $ bs where
+  bounds (l, r) = [(l, m), (m, r)] where
     m = (l + r) / 2
 
--- [[1,2],[3,4]] -> [[1,3], [2,3], [2,3], [2,m4]]
-
--- :: [a] -> [[a]] -> [[a]]
+possibilities :: [[a]] -> [[a]]
 possibilities = foldr (\xs xss -> concatMap (\x -> map (x :) xss) xs) [[]]
+
 
 
 test = [(0,10), (0,20), (0,30)] :: Bounds Double
 
-fracture (Node nodeBs mm (Just a)) = Node nodeBs mm (Just a)
+
   
 modifyArray :: (A.Ix i, A.IArray a e) => i -> (e -> e) -> a i e -> a i e
 modifyArray k f a = a A.// [(k, f (a A.! k))]
