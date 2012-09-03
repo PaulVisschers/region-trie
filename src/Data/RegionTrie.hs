@@ -45,7 +45,7 @@ empty :: Region k -> RegionTrie k a
 empty ks = Node ks MM.empty Nothing
 
 insert :: (Fractional k, Ord a, Ord k) => Region k -> a -> RegionTrie k a -> RegionTrie k a
-insert ks x (Node nodeKs mm Nothing) = if MM.size mm' > 10 && MM.keyCount mm' > 1 then fracture node else node where -- Might want to fine tune the selection process for fracturing.
+insert ks x (Node nodeKs mm Nothing) = if MM.size mm' > 1 && MM.keyCount mm' > 1 then fracture node else node where -- Might want to fine tune the selection process for fracturing.
   mm' = MM.insert ks x mm
   node = Node nodeKs mm' Nothing
 insert ks x (Node nodeKs mm (Just a)) = case getIndex ks nodeKs of
@@ -58,6 +58,14 @@ insertList ks t = foldr (uncurry insert) t ks
 fracture (Node nodeKs mm Nothing) = insertList (MM.assocs mm) $ Node nodeKs MM.empty (Just $ newPartitions nodeKs)
 fracture n = n
 
+assocs :: RegionTrie k a -> [(Region k, a)]
+assocs (Node nodeKs mm Nothing) = MM.assocs mm
+assocs (Node nodeKs mm (Just subTries)) = concatMap assocs (A.elems subTries) ++ MM.assocs mm
+
+-- Very inefficient and also refractures.
+merge (Node nodeKs mm (Just subTries)) = insertList (concatMap assocs (A.elems subTries)) (Node nodeKs mm Nothing)
+merge n = n
+
 newPartitions :: Fractional k => Region k -> A.Array Int (RegionTrie k a)
 newPartitions ks = A.listArray (0, length ks ^ 2 - 1) . map empty . possibilities . map bounds $ ks where
   bounds (l, r) = [(l, m), (m, r)] where
@@ -66,8 +74,12 @@ newPartitions ks = A.listArray (0, length ks ^ 2 - 1) . map empty . possibilitie
 possibilities :: [[a]] -> [[a]]
 possibilities = foldr (\xs xss -> concatMap (\x -> map (x :) xss) xs) [[]]
 
-testTree = insertList [
-  ([(2,4), (6,7)], 1)
+testTrie = insertList [
+  ([(2,4), (6,7)], 1),
+  ([(3,7), (1,2)], 2),
+  ([(2,4), (6,7)], 3),
+  ([(7,8), (9,9)], 4),
+  ([(8,9), (9,9)], 5)
   ] testEmpty
 testEmpty = empty test
 test = [(0,10), (0,10)] :: Region Double
