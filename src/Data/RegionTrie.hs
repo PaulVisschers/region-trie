@@ -42,24 +42,24 @@ type Region k = [(k, k)]
 data RegionTrie k a = Node (Region k) (MM.MultiMap (Region k) a) (Maybe (A.Array Int (RegionTrie k a))) deriving Show
 
 empty :: Region k -> RegionTrie k a
-empty bs = Node bs MM.empty Nothing
+empty ks = Node ks MM.empty Nothing
 
 insert :: (Fractional k, Ord a, Ord k) => Region k -> a -> RegionTrie k a -> RegionTrie k a
-insert bs x (Node nodeBs mm Nothing) = if MM.size mm' > 10 && MM.keyCount mm' > 1 then fracture node else node where -- Might want to fine tune the selection process for fracturing.
-  mm' = MM.insert bs x mm
-  node = Node nodeBs mm' Nothing
-insert bs x (Node nodeBs mm (Just a)) = case getIndex bs nodeBs of
-  Nothing -> Node nodeBs (MM.insert bs x mm) (Just a)
-  Just n -> Node nodeBs mm (Just (modifyArray n (insert bs x) a))
+insert ks x (Node nodeKs mm Nothing) = if MM.size mm' > 10 && MM.keyCount mm' > 1 then fracture node else node where -- Might want to fine tune the selection process for fracturing.
+  mm' = MM.insert ks x mm
+  node = Node nodeKs mm' Nothing
+insert ks x (Node nodeKs mm (Just a)) = case getIndex ks nodeKs of
+  Nothing -> Node nodeKs (MM.insert ks x mm) (Just a)
+  Just n -> Node nodeKs mm (Just (modifyArray n (insert ks x) a))
 
 insertList :: (Fractional k, Ord a, Ord k) => [(Region k, a)] -> RegionTrie k a -> RegionTrie k a
-insertList bs t = foldr (uncurry insert) t bs
+insertList ks t = foldr (uncurry insert) t ks
 
-fracture (Node nodeBs mm Nothing) = insertList (MM.assocs mm) $ Node nodeBs MM.empty (Just $ newPartitions nodeBs)
+fracture (Node nodeKs mm Nothing) = insertList (MM.assocs mm) $ Node nodeKs MM.empty (Just $ newPartitions nodeKs)
 fracture n = n
 
 newPartitions :: Fractional k => Region k -> A.Array Int (RegionTrie k a)
-newPartitions bs = A.listArray (0, length bs ^ 2 - 1) . map empty . possibilities . map bounds $ bs where
+newPartitions ks = A.listArray (0, length ks ^ 2 - 1) . map empty . possibilities . map bounds $ ks where
   bounds (l, r) = [(l, m), (m, r)] where
     m = (l + r) / 2
 
